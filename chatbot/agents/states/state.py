@@ -27,8 +27,16 @@ class AgentState(TypedDict):
 
     # ========== 6️⃣ Mục tiêu & truy vấn ==========
     daily_goal: Optional[Dict[str, float]]
-    meal_targets: Dict[str, Any]
-    meal_queries: List[str]
+    meal_plan: Optional[Dict[str, Any]]
+    meal_plan_day: Optional[Dict[str, Any]]
+
+    food_old: Optional[Dict[str, Any]]
+    food_new_raw: Optional[Dict[str, Any]]
+    food_new: Optional[Dict[str, Any]]
+
+    meal_old: Optional[List[Dict[str, Any]]]
+    meal_new_raw: Optional[List[Dict[str, Any]]]
+    meal_new: Optional[List[Dict[str, Any]]]
 
 
 __all__ = ["AgentState"]

@@ -2,7 +2,7 @@ from langgraph.graph import StateGraph, START, END
 from chatbot.agents.states.state import AgentState
 
 # Import các node
-from chatbot.agents.tools.daily_meal_functions import get_user_profile, generate_food_plan, generate_meal_plan
+from chatbot.agents.nodes.functions import get_user_profile, generate_food_plan, generate_meal_plan
 
 def workflow_meal_suggestion() -> StateGraph:
     workflow = StateGraph(AgentState)
