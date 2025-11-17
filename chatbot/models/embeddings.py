@@ -1,13 +1,17 @@
 from langchain_community.embeddings import HuggingFaceEmbeddings
+import threading
 
-def get_embeddings():
-    model_name = "Alibaba-NLP/gte-multilingual-base"
-    embeddings = HuggingFaceEmbeddings(
-        model_name=model_name,
+embeddings_model = None
+
+def load_model():
+    global embeddings_model
+    print("🚀 Start loading model...")  # In ra lúc bắt đầu load
+    embeddings_model = HuggingFaceEmbeddings(
+        model_name="Alibaba-NLP/gte-multilingual-base",
         model_kwargs={"trust_remote_code": True}
     )
-    return embeddings
+    print("✅ Model loaded!")  # In ra khi load xong
 
-embeddings = get_embeddings()
-
-__all__ = ["embeddings", "get_embeddings"]
+# Hàm gọi khi startup FastAPI
+def start_background_model():
+    threading.Thread(target=load_model).start()

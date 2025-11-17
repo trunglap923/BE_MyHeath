@@ -13,7 +13,7 @@ from langchain_elasticsearch import ElasticsearchStore
 from langchain.retrievers.self_query.elasticsearch import ElasticsearchTranslator
 from langchain.retrievers.self_query.base import SelfQueryRetriever
 
-from chatbot.models.embeddings import embeddings  # Import embeddings đã khởi tạo sẵn
+from chatbot.models.embeddings import embeddings_model as embeddings  # Import embeddings đã khởi tạo sẵn
 from chatbot.models.llm_setup import llm
 from chatbot.config import ELASTIC_CLOUD_URL, ELASTIC_API_KEY
 
