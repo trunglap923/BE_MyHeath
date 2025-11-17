@@ -1,9 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from chatbot.routes.chat_router import router as chat_router
-from chatbot.routes.daily_plan_route import router as daily_plan_router
-from chatbot.routes.food_replace_route import router as food_replace_router
-from chatbot.routes.meal_replace_route import router as meal_replace_router
+# from chatbot.routes.chat_router import router as chat_router
+# from chatbot.routes.daily_plan_route import router as daily_plan_router
+# from chatbot.routes.food_replace_route import router as food_replace_router
+# from chatbot.routes.meal_replace_route import router as meal_replace_router
 
 app = FastAPI(
     title="AI Meal Chatbot API",
@@ -21,10 +21,10 @@ app.add_middleware(
 )
 
 # Đăng ký route
-app.include_router(chat_router)
-app.include_router(daily_plan_router)
-app.include_router(food_replace_router)
-app.include_router(meal_replace_router)
+# app.include_router(chat_router)
+# app.include_router(daily_plan_router)
+# app.include_router(food_replace_router)
+# app.include_router(meal_replace_router)
 
 @app.get("/")
 def root():
