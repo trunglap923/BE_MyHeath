@@ -3,17 +3,22 @@ import json
 from pydantic import BaseModel, Field
 from chatbot.agents.states.state import AgentState
 from chatbot.models.llm_setup import llm
+import logging
+
+# --- Cấu hình logging ---
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class Topic(BaseModel):
     name: str = Field(
         description=(
             "Tên chủ đề mà người dùng đang hỏi. "
-            "Các giá trị hợp lệ: 'nutrition_analysis', 'meal_suggestion', 'general_chat'."
+            "Các giá trị hợp lệ: 'meal_suggestion', 'food_suggestion', food_query, 'policy', 'general_chat'."
         )
     )
 
 def classify_topic(state: AgentState):
-    print("---CLASSIFY TOPIC---")
+    logger.info("---CLASSIFY TOPIC---")
     llm_with_structure_op = llm.with_structured_output(Topic)
 
     prompt = PromptTemplate(
@@ -22,9 +27,11 @@ def classify_topic(state: AgentState):
 
         Nhiệm vụ:
         - Phân loại câu hỏi vào một trong các nhóm:
-            1. "meal_suggestion": khi người dùng muốn gợi ý thực đơn cho một bữa ăn, khẩu phần, hoặc chế độ ăn (chỉ cho bữa ăn, không cho món ăn đơn lẻ).
-            2. "food_query": khi người dùng tìm kiếm, gợi ý một món ăn hoặc muốn biết thành phần dinh dưỡng của món ăn hoặc khẩu phần cụ thể.
-            3. "general_chat": khi câu hỏi không thuộc hai nhóm trên.
+            1. "meal_suggestion": khi người dùng yêu cầu gợi ý thực đơn cho cả một bữa ăn hoặc trong cả một ngày (chỉ cho bữa ăn, không cho món ăn đơn lẻ).
+            2. "food_suggestion": khi người dùng yêu cầu tìm kiếm hoặc gợi ý một món ăn duy nhất (có thể của một bữa nào đó).
+            3. "food_query": khi người dùng muốn tìm kiếm thông tin về một món ăn như tên, thành phần, dinh dưỡng, cách chế biến
+            4. "policy": khi người dùng muốn biết các thông tin liên quan đến app.
+            5. "general_chat": khi người dùng muốn hỏi đáp các câu hỏi chung liên quan đến sức khỏe, chất dinh dưỡng.
 
         Câu hỏi người dùng: {question}
 
@@ -45,7 +52,7 @@ def classify_topic(state: AgentState):
         "format_instructions": format_instructions
     })
 
-    print("Topic:", topic_result.name)
+    logger.info(f"Topic: {topic_result.name}")
 
     return {"topic": topic_result.name}
 
@@ -53,8 +60,12 @@ def route_by_topic(state: AgentState):
     topic = state["topic"]
     if topic == "meal_suggestion":
         return "meal_identify"
+    elif topic == "food_suggestion":
+        return "food_suggestion"
     elif topic == "food_query":
         return "food_query"
+    elif topic == "policy":
+        return "policy"
     else:
         return "general_chat"
     

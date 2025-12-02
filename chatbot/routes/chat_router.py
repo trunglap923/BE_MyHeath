@@ -25,7 +25,7 @@ def chat(request: ChatRequest):
         # 1. Tạo state mới
         state = AgentState()
         state["user_id"] = request.user_id
-        state["messages"] = request.message or [HumanMessage(content="Tập luyện sức khỏe như nào cho tốt?")]
+        state["messages"] = [HumanMessage(content=request.message)]
 
         # 2. Lấy workflow chatbot
         graph = workflow_chatbot()

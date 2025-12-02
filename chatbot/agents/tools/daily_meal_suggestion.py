@@ -7,7 +7,7 @@ from langgraph.graph import END, StateGraph
 from chatbot.models.llm_setup import llm
 from langchain.tools import tool
 from chatbot.utils.user_profile import get_user_by_id
-from chatbot.agents.graphs.meal_suggestion_graph import workflow_meal_suggestion
+from chatbot.agents.graphs.meal_suggestion_graph import meal_plan_graph
 
 # --- Cấu hình logging ---
 logging.basicConfig(level=logging.INFO)
@@ -31,14 +31,13 @@ def daily_meal_suggestion(user_id: str, question: str, meals_to_generate: list):
         logger.warning("meals_to_generate không phải list, ép về list")
         meals_to_generate = list(meals_to_generate)
 
-    workflow  = workflow_meal_suggestion()
+    workflow = meal_plan_graph()
 
-    # 🧩 Truyền vào graph để xử lý
-    result = workflow .invoke({
+    result = workflow.invoke({
         "user_id": user_id,
         "question": question,
         "meals_to_generate": meals_to_generate,
     })
 
-    return result["response"]
+    return result
 

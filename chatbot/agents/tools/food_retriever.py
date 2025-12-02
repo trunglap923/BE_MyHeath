@@ -1,8 +1,3 @@
-# ========================================
-# 🥗 FOOD RETRIEVER - ElasticSearch Retriever
-# ========================================
-
-import os
 from langchain.chains.query_constructor.base import (
     AttributeInfo,
     get_query_constructor_prompt,
@@ -13,7 +8,7 @@ from langchain_elasticsearch import ElasticsearchStore
 from langchain.retrievers.self_query.elasticsearch import ElasticsearchTranslator
 from langchain.retrievers.self_query.base import SelfQueryRetriever
 
-from chatbot.models.embeddings import embeddings_model as embeddings  # Import embeddings đã khởi tạo sẵn
+from chatbot.models.embeddings import embeddings
 from chatbot.models.llm_setup import llm
 from chatbot.config import ELASTIC_CLOUD_URL, ELASTIC_API_KEY
 
@@ -334,7 +329,6 @@ docsearch = ElasticsearchStore(
     embedding=embeddings,
 )
 
-
 # ========================================
 # 5️⃣ Tạo retrievers (nhiều cấu hình)
 # ========================================
@@ -348,15 +342,21 @@ food_retriever = SelfQueryRetriever(
 )
 
 # Truy vấn ngắn gọn hơn, trả về top-3 kết quả
-food_retriever_top3 = SelfQueryRetriever(
+food_retriever_3 = SelfQueryRetriever(
     query_constructor=query_constructor,
     vectorstore=docsearch,
     structured_query_translator=ElasticsearchTranslator(),
     search_kwargs={"k": 3},
 )
 
+food_retriever_50 = SelfQueryRetriever(
+    query_constructor=query_constructor,
+    vectorstore=docsearch,
+    structured_query_translator=ElasticsearchTranslator(),
+    search_kwargs={"k": 50},
+)
 
 # ========================================
 # 6️⃣ EXPORT
 # ========================================
-__all__ = ["food_retriever", "food_retriever_top3", "docsearch", "query_constructor"]
+__all__ = ["food_retriever", "food_retriever_3", "food_retriever_50", "docsearch", "query_constructor"]

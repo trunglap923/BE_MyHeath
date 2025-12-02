@@ -25,6 +25,7 @@ def chat(request: Request):
         state = AgentState()
         state["user_id"] = request.user_id
         state["food_old"] = request.food_old
+        state["food_old"]["solver_bounds"] = tuple(state["food_old"].get("solver_bounds"))
 
         # 2. Lấy workflow
         graph = food_similarity_graph()
@@ -33,7 +34,7 @@ def chat(request: Request):
         result = graph.invoke(state)
 
         # 4. Trả response
-        response = result["food_new"] or "Không có kết quả"
+        response = result or "Không có kết quả"
         return {"response": response}
 
     except Exception as e:

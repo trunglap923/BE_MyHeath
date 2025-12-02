@@ -2,9 +2,14 @@ from chatbot.agents.states.state import AgentState
 from chatbot.models.llm_setup import llm
 from langchain.schema.messages import SystemMessage, HumanMessage
 from chatbot.utils.user_profile import get_user_by_id
+import logging
+
+# --- Cấu hình logging ---
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def general_chat(state: AgentState):
-    print("---GENERAL CHAT---")
+    logger.info("---GENERAL CHAT---")
 
     user_id = state.get("user_id", {})
     messages = state["messages"]
@@ -19,11 +24,11 @@ def general_chat(state: AgentState):
     - chế độ ăn (ăn chay, keto, giảm cân, tăng cơ...),
     - sức khỏe, lối sống, chế độ tập luyện liên quan đến ăn uống.
     Một số thông tin về người dùng có thể dùng đến như sau:
-    - Tổng năng lượng mục tiêu: {user_profile['kcal']} kcal/ngày
+    - Tổng năng lượng mục tiêu: {user_profile['targetcalories']} kcal/ngày
         - Protein: {user_profile['protein']}g
-        - Chất béo (lipid): {user_profile['lipid']}g
+        - Chất béo (lipid): {user_profile['totalfat']}g
         - Carbohydrate: {user_profile['carbohydrate']}g
-        - Chế độ ăn: {user_profile['khẩu phần']}
+        - Chế độ ăn: {user_profile['diet']}
     Không trả lời các câu hỏi ngoài chủ đề này.
     Giải thích ngắn gọn, tự nhiên, rõ ràng.
     """
@@ -35,6 +40,6 @@ def general_chat(state: AgentState):
 
     response = llm.invoke(messages)
 
-    print(response.content if hasattr(response, "content") else response)
+    logger.info(response.content if hasattr(response, "content") else response)
 
     return {"response": response.content}

@@ -4,22 +4,19 @@ from pydantic import BaseModel, Field
 from chatbot.agents.states.state import AgentState
 from chatbot.models.llm_setup import llm
 from typing import List
+import logging
+
+# --- Cấu hình logging ---
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class MealIntent(BaseModel):
-    intent: str = Field(
-        description=(
-            "Loại yêu cầu của người dùng, có thể là:\n"
-            "- 'full_day_meal': khi người dùng chưa ăn bữa nào và muốn gợi ý thực đơn cho cả ngày.\n"
-            "- 'not_full_day_meal': khi người dùng đã ăn một vài bữa và muốn gợi ý một bữa cụ thể hoặc các bữa còn lại."
-        )
-    )
     meals_to_generate: List[str] = Field(
         description="Danh sách các bữa được người dùng muốn gợi ý: ['sáng', 'trưa', 'tối']."
     )
     
-    
 def meal_identify(state: AgentState):
-    print("---MEAL IDENTIFY---")
+    logger.info("---MEAL IDENTIFY---")
 
     llm_with_structure_op = llm.with_structured_output(MealIntent)
 
@@ -33,14 +30,9 @@ def meal_identify(state: AgentState):
         template="""
         Bạn là bộ phân tích yêu cầu gợi ý bữa ăn trong hệ thống chatbot dinh dưỡng.
 
-        Dựa trên câu hỏi của người dùng, hãy xác định:
-        1. Người dùng muốn gợi ý cho **cả ngày**, **một hoặc một vài bữa cụ thể**.
-        2. Danh sách các bữa người dùng muốn gợi ý (nếu có).
+        Dựa trên câu hỏi của người dùng, hãy xác định danh sách các bữa người dùng muốn gợi ý.
 
-        Quy tắc:
-        - Nếu người dùng muốn gợi ý thực đơn cho cả ngày → intent = "full_day_meal".
-        - Nếu họ nói đã ăn một bữa nào đó, muốn gợi ý một hoặc các bữa còn lại → intent = "not_full_day_meal".
-        - Các bữa người dùng có thể muốn gợi ý: ["sáng", "trưa", "tối"].
+        - Các bữa người dùng có thể muốn gợi ý gồm: ["sáng", "trưa", "tối"].
 
         Câu hỏi người dùng: {question}
 
@@ -56,9 +48,8 @@ def meal_identify(state: AgentState):
         "format_instructions": format_instructions
     })
 
-    print("Bữa cần gợi ý: " + ", ".join(result.meals_to_generate))
+    logger.info("Bữa cần gợi ý: " + ", ".join(result.meals_to_generate))
 
     return {
-        "meal_intent": result.intent,
         "meals_to_generate": result.meals_to_generate,
     }

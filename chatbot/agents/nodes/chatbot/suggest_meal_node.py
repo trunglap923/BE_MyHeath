@@ -2,9 +2,14 @@ from langchain_core.messages import HumanMessage, SystemMessage, AIMessage, Tool
 from chatbot.agents.states.state import AgentState
 from chatbot.models.llm_setup import llm
 from chatbot.agents.tools.daily_meal_suggestion import daily_meal_suggestion
+import logging
+
+# --- Cấu hình logging ---
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def suggest_meal_node(state: AgentState):
-    print("---SUGGEST MEAL NODE---")
+    logger.info("---SUGGEST MEAL NODE---")
 
     # 🧠 Lấy dữ liệu từ state
     user_id = state.get("user_id", 0)
@@ -41,11 +46,11 @@ def suggest_meal_node(state: AgentState):
         ]
     )
 
-    print("===== DEBUG =====")
-    print("Response type:", type(response))
-    print("Tool calls:", getattr(response, "tool_calls", None))
-    print("Message content:", response.content)
-    print("=================")
+    logger.info("===== DEBUG =====")
+    logger.info(f"Response type: {type(response)}")
+    logger.info(f"Tool calls: {getattr(response, 'tool_calls', None)}")
+    logger.info(f"Message content: {response.content}")
+    logger.info("=================")
 
     if isinstance(response, AIMessage) and response.tool_calls:
         tool_call = response.tool_calls[0]
@@ -53,7 +58,7 @@ def suggest_meal_node(state: AgentState):
         tool_args = tool_call["args"]
         tool_call_id = tool_call["id"]
 
-        print(f"👉 Executing tool: {tool_name} with args: {tool_args}")
+        logger.info(f"👉 Executing tool: {tool_name} with args: {tool_args}")
 
         # Bổ sung tham số nếu LLM quên
         tool_args.setdefault("user_id", user_id)

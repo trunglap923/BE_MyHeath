@@ -1,13 +1,19 @@
-FROM python:3.9
+FROM python:3.10-slim
 
-RUN useradd -m -u 1000 user
-USER user
-ENV PATH="/home/user/.local/bin:$PATH"
+# Tắt cache HF để tránh lỗi nặng
+ENV HF_HOME=/cache/huggingface
+RUN mkdir -p /cache/huggingface
 
 WORKDIR /app
 
-COPY --chown=user ./requirements.txt requirements.txt
-RUN pip install --no-cache-dir --upgrade -r requirements.txt
+COPY requirements.txt .
 
-COPY --chown=user . /app
-CMD ["uvicorn", "chatbot.main:app", "--host", "0.0.0.0", "--port", "7860"]
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+# Expose cổng 7860 (HF Spaces yêu cầu)
+EXPOSE 7860
+
+# Chạy FastAPI
+CMD ["uvicorn", "start:app", "--host", "0.0.0.0", "--port", "7860"]

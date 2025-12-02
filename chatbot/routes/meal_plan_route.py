@@ -2,16 +2,17 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from langchain_core.messages import HumanMessage
 from chatbot.agents.states.state import AgentState
-from chatbot.agents.graphs.meal_suggestion_json_graph import workflow_meal_suggestion_json
+from chatbot.agents.graphs.meal_suggestion_graph import meal_plan_graph
 
 # --- Định nghĩa request body ---
 class Request(BaseModel):
     user_id: str
+    meals_to_generate: list
 
 # --- Tạo router ---
 router = APIRouter(
-    prefix="/daily-plan",
-    tags=["Daily Plan"]
+    prefix="/meal-plan",
+    tags=["Meal Plan"]
 )
 
 # --- Route xử lý chat ---
@@ -24,15 +25,16 @@ def chat(request: Request):
         # 1. Tạo state mới
         state = AgentState()
         state["user_id"] = request.user_id
+        state["meals_to_generate"] = request.meals_to_generate
         
         # 2. Lấy workflow
-        graph = workflow_meal_suggestion_json()
+        graph = meal_plan_graph()
 
         # 3. Invoke workflow
         result = graph.invoke(state)
 
         # 4. Trả response
-        response = result["meal_plan_day"] or "Không có kết quả"
+        response = result or "Không có kết quả"
         return {"response": response}
 
     except Exception as e:

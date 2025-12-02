@@ -1,0 +1,204 @@
+import logging
+from chatbot.agents.states.state import AgentState
+import numpy as np
+from scipy.optimize import minimize
+
+# --- Cấu hình logging ---
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+def optimize_portions_scipy(state: AgentState):
+    logger.info("---NODE: SCIPY OPTIMIZER (FINAL VERSION)---")
+    profile = state.get("user_profile", {})
+    menu = state.get("selected_structure", [])
+
+    if not menu:
+        print("⚠️ Menu rỗng, bỏ qua tối ưu hóa.")
+        return {"final_menu": []}
+
+    # --- BƯỚC 1: XÁC ĐỊNH MỤC TIÊU TỐI ƯU HÓA (CRITICAL STEP) ---
+    # Lấy Target Ngày gốc
+    daily_targets = np.array([
+        float(profile.get("targetcalories", 1314)),
+        float(profile.get("protein", 98)),
+        float(profile.get("totalfat", 43)),
+        float(profile.get("carbohydrate", 131))
+    ])
+
+    # Tỷ lệ các bữa
+    meal_ratios = {"sáng": 0.25, "trưa": 0.40, "tối": 0.35}
+
+    # Xác định các bữa có trong menu hiện tại
+    generated_meals = set(d.get("assigned_meal", "").lower() for d in menu)
+
+    # Tính Target Thực Tế (Optimization Target)
+    # Ví dụ: Nếu chỉ có bữa Trưa -> Target = Daily * 0.4
+    # Nếu có Trưa + Tối -> Target = Daily * (0.4 + 0.35)
+    active_target = np.zeros(4)
+    active_ratios_sum = 0
+
+    for m in ["sáng", "trưa", "tối"]:
+        if m in generated_meals:
+            active_target += daily_targets * meal_ratios[m]
+            active_ratios_sum += meal_ratios[m]
+
+    # Fallback: Nếu không xác định được bữa nào, dùng Target Ngày
+    if np.sum(active_target) == 0:
+        active_target = daily_targets
+
+    logger.info(f"   🎯 Mục tiêu tối ưu hóa (Active Target): {active_target.astype(int)}")
+
+    # --- BƯỚC 2: THIẾT LẬP MA TRẬN & BOUNDS ---
+    matrix = []
+    bounds = []
+    meal_indices = {"sáng": [], "trưa": [], "tối": []}
+
+    # Tính target riêng từng bữa để dùng cho Distribution Loss
+    target_kcal_per_meal = {
+        k: daily_targets[0] * v for k, v in meal_ratios.items()
+    }
+
+    for i, dish in enumerate(menu):
+        nutrients = [
+            float(dish.get("kcal", 0)),
+            float(dish.get("protein", 0)),
+            float(dish.get("lipid", 0)),
+            float(dish.get("carbohydrate", 0))
+        ]
+        matrix.append(nutrients)
+
+        # Logic Bounds Thông minh
+        current_kcal = nutrients[0]
+        t_meal_name = dish.get("assigned_meal", "").lower()
+        t_meal_target = target_kcal_per_meal.get(t_meal_name, 500)
+
+        # Nếu 1 món chiếm > 90% Kcal mục tiêu của bữa đó -> Phải cho giảm sâu
+        if current_kcal > (t_meal_target * 0.9):
+             bounds.append((0.3, 1.0))
+        elif "solver_bounds" in dish:
+            bounds.append(dish["solver_bounds"])
+        else:
+            bounds.append((0.5, 1.5))
+
+        if "sáng" in t_meal_name: meal_indices["sáng"].append(i)
+        elif "trưa" in t_meal_name: meal_indices["trưa"].append(i)
+        elif "tối" in t_meal_name: meal_indices["tối"].append(i)
+
+    matrix = np.array(matrix).T
+    n_dishes = len(menu)
+    initial_guess = np.ones(n_dishes)
+
+    # --- BƯỚC 3: ADAPTIVE WEIGHTS (TRÁNH BẪY LIPID) ---
+    # Kiểm tra tính khả thi: Liệu menu này có ĐỦ chất để đạt target không?
+
+    # Tính dinh dưỡng tối đa có thể đạt được (nếu ăn x2.5 suất tất cả)
+    max_possible = matrix.dot(np.full(n_dishes, 2.5))
+
+    # Trọng số mặc định: [Kcal, P, L, C]
+    adaptive_weights = np.array([3.0, 2.0, 1.0, 1.0])
+    nutri_names = ["Kcal", "Protein", "Lipid", "Carb"]
+
+    for i in range(1, 4): # Check P, L, C
+        # Nếu Max khả thi vẫn < 70% Target -> Menu này quá thiếu chất đó
+        # -> Giảm trọng số về gần 0 để Solver không cố gắng cứu nó
+        if max_possible[i] < (active_target[i] * 0.7):
+            logger.info(f"   ⚠️ Thiếu hụt {nutri_names[i]} nghiêm trọng (Max {int(max_possible[i])} < Target {int(active_target[i])}). Bỏ qua tối ưu chỉ số này.")
+            adaptive_weights[i] = 0.01
+
+    # --- BƯỚC 4: LOSS FUNCTION ---
+    def objective(portions):
+        # A. Loss Macro (So với Active Target)
+        current_macros = matrix.dot(portions)
+
+        # Dùng adaptive_weights để tránh bẫy
+        diff = (current_macros - active_target) / (active_target + 1e-5)
+        loss_macro = np.sum(adaptive_weights * (diff ** 2))
+
+        # B. Loss Phân bổ Bữa ăn (Chỉ cần thiết nếu sinh nhiều bữa)
+        loss_dist = 0
+        if active_ratios_sum > 0.5: # Chỉ tính nếu sinh > 1 bữa
+            kcal_row = matrix[0]
+            for m_type, indices in meal_indices.items():
+                if not indices: continue
+                current_meal_kcal = np.sum(kcal_row[indices] * portions[indices])
+                target_meal = target_kcal_per_meal.get(m_type, 0)
+                d = (current_meal_kcal - target_meal) / (target_meal + 1e-5)
+                loss_dist += (d ** 2)
+
+        return loss_macro + (1.5 * loss_dist)
+
+    # 5. Run Optimization
+    res = minimize(objective, initial_guess, method='SLSQP', bounds=bounds)
+
+    # 6. Apply Results
+    optimized_portions = res.x
+    final_menu = []
+    total_stats = np.zeros(4)
+    achieved_meal_kcal = {"sáng": 0, "trưa": 0, "tối": 0}
+
+    for i, dish in enumerate(menu):
+        ratio = optimized_portions[i]
+        final_dish = dish.copy()
+
+        final_dish["portion_scale"] = float(round(ratio, 2))
+        final_dish["final_kcal"] = int(dish.get("kcal", 0) * ratio)
+        final_dish["final_protein"] = int(dish.get("protein", 0) * ratio)
+        final_dish["final_lipid"] = int(dish.get("lipid", 0) * ratio)
+        final_dish["final_carb"] = int(dish.get("carbohydrate", 0) * ratio)
+
+        logger.info(f"   - {dish['name']} ({dish['assigned_meal']}): x{final_dish['portion_scale']} suất -> {final_dish['final_kcal']}kcal, {final_dish['final_protein']}g Protein, {final_dish['final_lipid']}g Lipid, {final_dish['final_carb']}g Carbohydrate")
+
+        final_menu.append(final_dish)
+        total_stats += np.array([
+            final_dish["final_kcal"], final_dish["final_protein"],
+            final_dish["final_lipid"], final_dish["final_carb"]
+        ])
+
+        m_type = dish.get("assigned_meal", "").lower()
+        if "sáng" in m_type: achieved_meal_kcal["sáng"] += final_dish["final_kcal"]
+        elif "trưa" in m_type: achieved_meal_kcal["trưa"] += final_dish["final_kcal"]
+        elif "tối" in m_type: achieved_meal_kcal["tối"] += final_dish["final_kcal"]
+
+    # --- BƯỚC 7: BÁO CÁO KẾT QUẢ ---
+    logger.info("\n   📊 BÁO CÁO TỐI ƯU HÓA CHI TIẾT:")
+
+    headers = ["Chỉ số", "Mục tiêu (Bữa)", "Kết quả", "Độ lệch"]
+    row_format = "   | {:<12} | {:<15} | {:<15} | {:<15} |"
+    logger.info("   " + "-"*65)
+    logger.info(row_format.format(*headers))
+    logger.info("   " + "-"*65)
+
+    labels = ["Năng lượng", "Protein", "Lipid", "Carb"]
+    units = ["Kcal", "g", "g", "g"]
+
+    for i in range(4):
+        t_val = int(active_target[i]) # So sánh với Active Target
+        r_val = int(total_stats[i])
+        diff = r_val - t_val
+        diff_str = f"{diff:+d} {units[i]}"
+
+        status = ""
+        percent_diff = abs(diff) / (t_val + 1e-5)
+        # Nếu weight bị giảm về 0.01 thì không cảnh báo lỗi nữa (vì đã chấp nhận bỏ qua)
+        if percent_diff > 0.15 and adaptive_weights[i] > 0.1: status = "⚠️"
+        else: status = "✅"
+
+        logger.info(row_format.format(
+            labels[i],
+            f"{t_val} {units[i]}",
+            f"{r_val} {units[i]}",
+            f"{diff_str} {status}"
+        ))
+    logger.info("   " + "-"*65)
+
+    logger.info("\n   ⚖️  PHÂN BỔ TỪNG BỮA (Kcal):")
+    for meal in ["sáng", "trưa", "tối"]:
+        if meal in generated_meals:
+            t_meal = int(target_kcal_per_meal[meal])
+            r_meal = int(achieved_meal_kcal[meal])
+            logger.info(f"   - {meal.capitalize():<5}: Đạt {r_meal} / {t_meal} Kcal")
+
+    return {
+        "final_menu": final_menu,
+        "user_profile": profile
+    }

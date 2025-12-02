@@ -2,41 +2,35 @@ from typing import Annotated, Optional, Literal, Sequence, TypedDict, List, Dict
 from langgraph.graph.message import add_messages
 
 class AgentState(TypedDict):
-    # ========== 1️⃣ Thông tin cơ bản ==========
+    # ========== Thông tin cơ bản ==========
     user_id: Optional[str]
     question: str
 
-    # ========== 2️⃣ Ngữ cảnh hội thoại ==========
+    # ========== Ngữ cảnh hội thoại ==========
     topic: Optional[str]
     user_profile: Optional[Dict[str, Any]]
 
-    # ========== 3️⃣ Gợi ý & lựa chọn món ăn ==========
-    meal_intent: Optional[str]
+    # ========== Gợi ý & lựa chọn món ăn ==========
     meals_to_generate: Optional[List[str]]
     suggested_meals: Optional[List[Dict[str, Any]]]
-    selected_meals: Optional[List[Dict[str, Any]]]
 
-    # ========== 4️⃣ Nhật ký & dinh dưỡng ==========
-    today_log: Optional[List[Dict[str, Any]]]
-    remaining: Optional[Dict[str, float]]
-
-    # ========== 5️⃣ Kết quả & phản hồi ==========
-    analysis_result: Optional[Dict[str, Any]]
+    # ========== Kết quả & phản hồi ==========
     response: Optional[str]
     messages: Annotated[list, add_messages]
 
-    # ========== 6️⃣ Mục tiêu & truy vấn ==========
-    daily_goal: Optional[Dict[str, float]]
-    meal_plan: Optional[Dict[str, Any]]
-    meal_plan_day: Optional[Dict[str, Any]]
+    # ========== Mục tiêu & truy vấn ==========
+    candidate_pool: List[dict]
+    selected_structure: List[dict]
+    reason: Optional[str]
+    final_menu: List[dict]
 
     food_old: Optional[Dict[str, Any]]
-    food_new_raw: Optional[Dict[str, Any]]
-    food_new: Optional[Dict[str, Any]]
 
-    meal_old: Optional[List[Dict[str, Any]]]
-    meal_new_raw: Optional[List[Dict[str, Any]]]
-    meal_new: Optional[List[Dict[str, Any]]]
+class SwapState(TypedDict):
+    user_profile: Dict[str, Any]
+    food_old: Dict[str, Any]
+    candidates: List[Dict[str, Any]]
+    top_candidates: List[Dict[str, Any]]
+    best_replacement: Dict[str, Any]
 
-
-__all__ = ["AgentState"]
+__all__ = ["AgentState", "SwapState"]
