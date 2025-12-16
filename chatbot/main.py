@@ -11,16 +11,14 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# Cho phép CORS để kết nối frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # ⚠️ đổi sau nếu cần bảo mật
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Đăng ký route
 app.include_router(chat_router)
 app.include_router(meal_plan_router)
 app.include_router(food_replace_router)

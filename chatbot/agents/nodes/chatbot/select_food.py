@@ -1,13 +1,14 @@
 from chatbot.agents.states.state import AgentState
 from chatbot.models.llm_setup import llm
 from langchain_core.messages import AIMessage, SystemMessage, HumanMessage
+from langchain_core.runnables import RunnableConfig
 import logging
 
 # --- Cấu hình logging ---
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def select_food(state: AgentState):
+async def select_food(state: AgentState, config: RunnableConfig):
     print("---NODE: ANALYZE & ANSWER---")
 
     suggested_meals = state["suggested_meals"]
@@ -44,17 +45,15 @@ def select_food(state: AgentState):
 
     Lưu ý: Chỉ sử dụng thông tin từ danh sách cung cấp, không bịa đặt số liệu.
     """
-
+        
     try:
-        response = llm.invoke([
+        response = await llm.ainvoke([
             SystemMessage(content=system_prompt),
             HumanMessage(content=user_message)
-        ])
-
-        logger.info("💬 AI Response:", response.content)
+        ], config=config)
 
         return {"messages": [response]}
 
     except Exception as e:
-        logger.info(f"⚠️ Lỗi sinh câu trả lời: {e}")
-        return {"messages": [AIMessage(content="Đã xảy ra lỗi khi phân tích dữ liệu món ăn.")]}
+        print(f"Lỗi LLM: {e}")
+        return {"messages": [AIMessage(content="Xin lỗi, có lỗi xảy ra.")]}

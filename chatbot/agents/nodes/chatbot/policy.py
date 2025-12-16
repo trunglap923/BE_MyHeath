@@ -2,13 +2,14 @@ from chatbot.agents.states.state import AgentState
 from langchain_core.messages import AIMessage, SystemMessage, HumanMessage
 from chatbot.models.llm_setup import llm
 from chatbot.agents.tools.info_app_retriever import policy_retriever
+from langchain_core.runnables import RunnableConfig
 import logging
 
 # --- Cấu hình logging ---
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def policy(state: AgentState):
+async def policy(state: AgentState, config: RunnableConfig):
     logger.info("---POLICY---")
     messages = state["messages"]
     question = messages[-1].content if messages else state.question
@@ -42,12 +43,13 @@ QUY TẮC AN TOÀN:
     logger.info(f"Prompt gửi đến LLM cho chính sách: {system_prompt}")
 
     try:
-        response = llm.invoke([
+        response = await llm.ainvoke([
             SystemMessage(content=system_prompt),
             HumanMessage(content=question)
-        ])
+        ], config=config)
 
         return {"messages": [response]}
 
     except Exception as e:
-        return {"messages": [AIMessage(content="Lỗi khi tạo câu trả lời.")]}
+        print(f"Lỗi LLM: {e}")
+        return {"messages": [AIMessage(content="Xin lỗi, có lỗi xảy ra.")]}

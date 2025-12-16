@@ -60,19 +60,17 @@ def calculate_top_options(state: SwapState):
         try:
             loss, scale = calculate_score(item)
 
-            # Chỉ lấy những món có sai số chấp nhận được
-            if loss < 10.0:
-                item_score = item.copy()
-                item_score["optimization_loss"] = round(loss, 4)
-                item_score["portion_scale"] = round(scale, 2)
+            item_score = item.copy()
+            item_score["optimization_loss"] = round(loss, 4)
+            item_score["portion_scale"] = round(scale, 2)
 
-                # Tính chỉ số hiển thị sau khi scale
-                item_score["final_kcal"] = int(item["kcal"] * scale)
-                item_score["final_protein"] = int(item["protein"] * scale)
-                item_score["final_totalfat"] = int(item["totalfat"] * scale)
-                item_score["final_carbs"] = int(item["carbs"] * scale)
+            # Tính chỉ số hiển thị sau khi scale
+            item_score["final_kcal"] = int(item["kcal"] * scale)
+            item_score["final_protein"] = int(item["protein"] * scale)
+            item_score["final_totalfat"] = int(item["totalfat"] * scale)
+            item_score["final_carbs"] = int(item["carbs"] * scale)
 
-                scored_candidates.append(item_score)
+            scored_candidates.append(item_score)
         except Exception as e:
             logger.warning(f"Lỗi khi xử lý món {item.get('name', 'N/A')}: {e}")
             continue

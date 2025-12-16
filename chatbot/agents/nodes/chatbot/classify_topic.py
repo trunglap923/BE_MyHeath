@@ -20,8 +20,10 @@ class Topic(BaseModel):
 
 def classify_topic(state: AgentState):
     print("---CLASSIFY TOPIC ---")
-
-    classifier_llm = llm.with_structured_output(Topic)
+    all_messages = state["messages"]
+    
+    question = all_messages[-1].content
+    history_messages = all_messages[:-1]
 
     system_msg = """
     Bạn là bộ điều hướng thông minh.
@@ -45,15 +47,20 @@ def classify_topic(state: AgentState):
 
     prompt = ChatPromptTemplate.from_messages([
         ("system", system_msg),
-        MessagesPlaceholder(variable_name="history"),
+        MessagesPlaceholder(variable_name="history"), # Bối cảnh chat
+        ("human", "{input}")                          # Câu hỏi MỚI CẦN PHÂN LOẠI
     ])
 
+    classifier_llm = llm.with_structured_output(Topic)
     chain = prompt | classifier_llm
 
     recent_messages = get_chat_history(state["messages"], max_tokens=500)
 
     try:
-        topic_result = chain.invoke({"history": recent_messages})
+        topic_result = chain.invoke({
+            "history": recent_messages, # Lịch sử chat (MessagesPlaceholder)
+            "input": question           # Câu hỏi mới (HumanMessage)
+        })
         topic_name = topic_result.name
     except Exception as e:
         print(f"⚠️ Lỗi phân loại: {e}")
