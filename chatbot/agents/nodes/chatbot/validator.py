@@ -10,35 +10,36 @@ logger = logging.getLogger(__name__)
 def universal_validator(state: AgentState):
     print("---NODE: UNIVERSAL VALIDATOR---")
 
-    # 1. Lấy dữ liệu
     topic = state.get("topic", "general_chat")
-    goals = state.get("user_profile", {})
-    missing_from_prev = state.get("missing_fields", [])
+    missing_from_prev = set(state.get("missing_fields", []))
 
-    # 2. Xác định yêu cầu của Topic hiện tại
-    required_fields = TOPIC_REQUIREMENTS.get(topic, [])
+    requirement_groups = TOPIC_REQUIREMENTS.get(topic, [])
 
-    # 3. Logic Kiểm Tra
-    final_missing = []
-    # Trường hợp A: Nếu bước trước LLM đã báo thiếu
-    if missing_from_prev:
-        final_missing.extend(missing_from_prev)
-    # Trường hợp B: Kiểm tra lại các trường bắt buộc của topic
-    for field in required_fields:
-        value = goals.get(field)
+    if not requirement_groups:
+        logger.info(f"   ✅ Topic '{topic}' không có requirement. Pass.")
+        return {"is_valid": True, "missing_fields": []}
 
-        if value is None:
-            final_missing.append(field)
-        elif isinstance(value, (int, float)) and value <= 0:
-            final_missing.append(field)
-        elif isinstance(value, str) and not value.strip():
-            final_missing.append(field)
+    all_group_missing = []
 
-    final_missing = list(set(final_missing))
+    for group in requirement_groups:
+        missing_in_group = list(set(group) & missing_from_prev)
 
-    if final_missing:
-        logger.info(f"   ⛔ Topic '{topic}' thiếu: {final_missing}")
-        return {"is_valid": False, "missing_fields": final_missing}
+        if not missing_in_group:
+            logger.info(
+                f"   ✅ Topic '{topic}' thỏa mãn requirement group: {group}"
+            )
+            return {"is_valid": True, "missing_fields": []}
 
-    logger.info(f"   ✅ Topic '{topic}' đủ thông tin. Pass.")
-    return {"is_valid": True, "missing_fields": []}
+        all_group_missing.append(missing_in_group)
+
+    final_missing = min(all_group_missing, key=len)
+
+    logger.info(
+        f"   ⛔ Topic '{topic}' chưa đủ requirement. "
+        f"Còn thiếu (ưu tiên hỏi): {final_missing}"
+    )
+
+    return {
+        "is_valid": False,
+        "missing_fields": final_missing
+    }

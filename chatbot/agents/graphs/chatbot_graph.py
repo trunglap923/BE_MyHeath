@@ -22,7 +22,7 @@ def workflow_chatbot():
     workflow = StateGraph(AgentState)
 
     workflow.add_node("classify_topic", classify_topic)
-    workflow.add_node("validator", universal_validator)
+    # workflow.add_node("validator", universal_validator)
     workflow.add_node("load_context", load_context_strict)
     workflow.add_node("ask_info", ask_missing_info)
 
@@ -53,10 +53,10 @@ def workflow_chatbot():
         }
     )
 
-    workflow.add_edge("load_context", "validator")
+    # workflow.add_edge("load_context", "validator")
 
     workflow.add_conditional_edges(
-        "validator",
+        "load_context",
         route_post_validation,
         {
             "ask_info": "ask_info",

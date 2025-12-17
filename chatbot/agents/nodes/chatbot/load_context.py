@@ -2,6 +2,7 @@
 from pydantic import BaseModel, Field
 from chatbot.agents.states.state import AgentState
 from chatbot.models.llm_setup import llm
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from typing import Literal, List, Optional
 from langchain_core.messages import SystemMessage
 from chatbot.utils.chat_history import get_chat_history
@@ -47,12 +48,13 @@ class ContextDecision(BaseModel):
     calculated_goals: Optional[MacroGoals] = Field(None, description="Kết quả tính toán NẾU đủ thông tin.")
     missing_info: List[str] = Field(default=[], description="Danh sách các thông tin còn thiếu để tính TDEE (VD: ['height', 'age']). Nếu đủ thì để trống.")
 
-    reasoning: str = Field(description="Giải thích ngắn gọn tại sao đủ hoặc thiếu.")
-
 def load_context_strict(state: AgentState):
     logger.info("---NODE: STRICT CONTEXT & CALCULATOR---")
 
-    history = get_chat_history(state["messages"], max_tokens=1000)
+    all_messages = state["messages"]
+    
+    question = all_messages[-1].content
+    history_messages = all_messages[:-1]
 
     user_id = state.get("user_id", 1)
 
@@ -68,7 +70,7 @@ def load_context_strict(state: AgentState):
 
     3. TRƯỜNG HỢP B: Người dùng CÓ cung cấp thông tin (dù chỉ là 1 phần).
        -> Trả về: user_provided_info = True.
-       -> Kiểm tra xem thông tin đã ĐỦ để tính TDEE chưa? (Cần đầy đủ (Weight, Height, Age, Gender, Activity) hoặc (Kcal, Protein, Lipid, Carbohydrate))
+       -> Kiểm tra xem thông tin đã ĐỦ để tính TDEE chưa? (Cần đầy đủ ('weight', 'height', 'age', 'gender', 'activity', 'target_goal') hoặc ('targetcalories', 'protein', 'totalfat', 'carbohydrate'))
        -> NẾU THIẾU: Liệt kê các trường thiếu vào 'missing_info'.
        -> NẾU ĐỦ (hoặc user cho sẵn Target Kcal):
           - Hãy TÍNH TOÁN ngay lập tức 4 chỉ số: Kcal, Protein, Lipid, Carbohydrate.
@@ -77,14 +79,25 @@ def load_context_strict(state: AgentState):
           - Trả về kết quả trong 'calculated_goals'.
     """
 
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", system_prompt),
+        MessagesPlaceholder(variable_name="history"), # Bối cảnh chat
+        ("human", "{input}")                          # Câu hỏi MỚI CẦN PHÂN LOẠI
+    ])
+    
+    context_llm = llm.with_structured_output(ContextDecision)
+    chain = prompt | context_llm
+
+    recent_messages = get_chat_history(state["messages"], max_tokens=500)
+    
     try:
-        chain = llm.with_structured_output(ContextDecision)
-        input_messages = [SystemMessage(content=system_prompt)] + history
-        decision = chain.invoke(input_messages)
+        decision = chain.invoke({
+            "history": recent_messages, # Lịch sử chat (MessagesPlaceholder)
+            "input": question           # Câu hỏi mới (HumanMessage)
+        })
 
         logger.info(f"   🤖 Decision: User Provided Info = {decision.user_provided_info}")
         logger.info(f"   📝 Missing Info: {decision.missing_info}")
-        logger.info(f"   📝 Reasoning: {decision.reasoning}")
 
     except Exception as e:
         logger.info(f"⚠️ Lỗi LLM: {e}")
@@ -92,18 +105,21 @@ def load_context_strict(state: AgentState):
 
     final_nutrition_goals = {}
     missing_fields = []
+    is_valid = False
 
     if not decision.user_provided_info:
         logger.info("   💾 Dùng Profile Database.")
         nutrition_goals = get_user_by_id(user_id)
         restrictions = get_restrictions(nutrition_goals["healthStatus"])
         final_nutrition_goals = {**nutrition_goals, **restrictions}
+        is_valid = True
 
     else:
         logger.info("   🚀 Dùng Profile Tạm thời (Session).")
         if decision.missing_info:
             logger.info(f"   ⛔ Còn thiếu: {decision.missing_info}")
             missing_fields = decision.missing_info
+            is_valid = False
         elif decision.calculated_goals:
             goals = decision.calculated_goals
             logger.info(f"   ✅ Đã tính xong: {goals.targetcalories} Kcal")
@@ -118,8 +134,10 @@ def load_context_strict(state: AgentState):
             }
             restrictions = get_restrictions(nutrition_goals["healthStatus"])
             final_nutrition_goals = {**nutrition_goals, **restrictions}
+            is_valid = True
 
     return {
         "user_profile": final_nutrition_goals,
-        "missing_fields": missing_fields
+        "missing_fields": missing_fields,
+        "is_valid": is_valid
     }

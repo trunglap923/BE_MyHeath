@@ -1,17 +1,27 @@
 TOPIC_REQUIREMENTS = {
-    "meal_suggestion": ["targetcalories", "protein", "totalfat", "carbohydrate"],
+    "meal_suggestion": [
+        ["weight", "height", "age", "gender", "activity", "target_goal"],
+        ["targetcalories", "protein", "totalfat", "carbohydrate"]
+    ],
+    "food_suggestion": [
+        ["weight", "height", "age", "gender", "activity", "target_goal"],
+        ["targetcalories", "protein", "totalfat", "carbohydrate"]
+    ],
     "food_query": [],
-    "food_suggestion": ["targetcalories", "protein", "totalfat", "carbohydrate"],
     "general_chat": [],
     "policy": []
 }
 
 FIELD_NAMES_VN = {
-    "targetcalories": "Mức Calo mục tiêu (hoặc Cân nặng & Chiều cao)",
-    "weight": "Cân nặng",
-    "height": "Chiều cao",
+    "weight": "Cân nặng (kg)",
+    "height": "Chiều cao (cm)",
     "age": "Tuổi",
     "gender": "Giới tính",
-    "diet": "Chế độ ăn",
-    "health_status": "Tình trạng sức khỏe"
+    "activity": "Mức độ vận động",
+    "target_goal": "Mục tiêu (giảm cân / tăng cơ / giữ cân)",
+
+    "targetcalories": "Mức calo mục tiêu (kcal/ngày)",
+    "protein": "Protein (gram/ngày)",
+    "totalfat": "Chất béo / Fat (gram/ngày)",
+    "carbohydrate": "Carbohydrate / Tinh bột (gram/ngày)",
 }
