@@ -57,7 +57,7 @@ async def generate_final_response(state: AgentState, config: RunnableConfig):
     target_p = int(profile.get('protein', 0))
     # Ước tính mục tiêu F/C nếu app có lưu (giả định có trong profile)
     target_f = int(profile.get('totalfat', 0))
-    target_c = int(profile.get('carbs', 0))
+    target_c = int(profile.get('carbohydrate', 0))
 
     system_prompt = f"""
 Bạn là một Chuyên gia Dinh dưỡng AI. Hãy trình bày thực đơn và phân tích sâu về các chỉ số dinh dưỡng.
@@ -83,7 +83,7 @@ YÊU CẦU TRÌNH BÀY:
 6. Không dùng bảng để trình bày.
 7. Trả lời một cách ngắn gọn không dài dòng.
 """
-    print(f"👉 Prompt: {system_prompt}")
+    logger.info(f"👉 Prompt: {system_prompt}")
 
     # 4. Gọi LLM Stream
     try:

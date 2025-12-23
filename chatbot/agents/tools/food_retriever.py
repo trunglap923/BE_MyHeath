@@ -419,6 +419,13 @@ food_retriever = SelfQueryRetriever(
     search_kwargs={"k": 20},
 )
 
+food_retriever_10 = SelfQueryRetriever(
+    query_constructor=query_constructor,
+    vectorstore=docsearch,
+    structured_query_translator=ElasticsearchTranslator(),
+    search_kwargs={"k": 10},
+)
+
 # Truy vấn ngắn gọn hơn, trả về top-3 kết quả
 food_retriever_3 = SelfQueryRetriever(
     query_constructor=query_constructor,
@@ -434,7 +441,17 @@ food_retriever_50 = SelfQueryRetriever(
     search_kwargs={"k": 50},
 )
 
+def retriever(query_text: str, top_k: int = 10):
+    """Hàm tiện ích để truy vấn với số lượng kết quả tùy chọn."""
+    temp_retriever = SelfQueryRetriever(
+        query_constructor=query_constructor,
+        vectorstore=docsearch,
+        structured_query_translator=ElasticsearchTranslator(),
+        search_kwargs={"k": top_k},
+    )
+    return temp_retriever.invoke(query_text)
+
 # ========================================
 # 6️⃣ EXPORT
 # ========================================
-__all__ = ["food_retriever", "food_retriever_3", "food_retriever_50", "docsearch", "query_constructor"]
+__all__ = ["food_retriever", "food_retriever_3", "food_retriever_10", "food_retriever_50", "docsearch", "query_constructor"]
