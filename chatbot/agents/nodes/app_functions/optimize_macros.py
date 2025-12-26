@@ -121,7 +121,7 @@ def optimize_portions_scipy(state: AgentState):
                     d = (current_meal_kcal - target_meal) / (target_meal + 1e-5)
                     loss_dist += (d ** 2)
 
-            return 3 * loss_macro + loss_dist
+            return 2 * loss_macro + loss_dist
 
         # 5. Run Optimization
         logger.info("Đang tối ưu hóa phần suất món ăn...")

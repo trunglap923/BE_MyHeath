@@ -101,7 +101,35 @@ def generate_food_candidates(state: AgentState):
     diet_mode = profile.get('diet', '')       # VD: Chế độ HighProtein
     restrictions = profile.get('limitFood', '') # VD: Dị ứng sữa, Thuần chay
     health_status = profile.get('healthStatus', '') # VD: Suy thận
+    
+    #--------Reason----------
+    raw_limit = str(restrictions) if restrictions else ''
+    specific_avoids = [x.strip() for x in raw_limit.split(',')] if raw_limit and raw_limit.lower() not in ["không", "không có"] else []
 
+    raw_kieng = profile.get('Kiêng', [])
+    raw_hanche = profile.get('Hạn chế', [])
+    list_kieng = raw_kieng if isinstance(raw_kieng, list) else ([str(raw_kieng)] if raw_kieng else [])
+    list_hanche = raw_hanche if isinstance(raw_hanche, list) else ([str(raw_hanche)] if raw_hanche else [])
+    nutrient_controls = list(set(list_kieng + list_hanche))
+    nutrient_controls = [x for x in nutrient_controls if x and x.lower() not in ["không", "không có", "none"]]
+
+    raw_bosung = profile.get('Bổ sung', [])
+    list_bosung = raw_bosung if isinstance(raw_bosung, list) else ([str(raw_bosung)] if raw_bosung else [])
+    priority_nutrients = set([x for x in list_bosung if x and x.lower() not in ["không", "không có"]])
+
+    reason_parts = []
+    
+    if diet_mode and diet_mode not in ["Bình thường", None]:
+        reason_parts.append(f"theo chế độ **{diet_mode}**")
+    if health_status and health_status not in ["Bình thường", "Khỏe mạnh", "Không có", None]:
+        reason_parts.append(f"hỗ trợ bệnh **{health_status}**")
+    if specific_avoids: reason_parts.append(f"phù hợp với người **{', '.join(specific_avoids)}**")
+    if nutrient_controls: reason_parts.append(f"kiểm soát lượng **{', '.join(nutrient_controls)}**")
+    if priority_nutrients: reason_parts.append(f"tăng cường thực phẩm giàu **{', '.join(priority_nutrients)}**")
+
+    dynamic_reason = f"Hệ thống đã tối ưu thực đơn: {'; '.join(reason_parts)}." if reason_parts else "Thực đơn cân bằng dinh dưỡng cơ bản."
+    
+    #-------Prompt---------
     constraint_prompt = ""
     if restrictions not in ["Không có"]:
         constraint_prompt += f"Yêu cầu bắt buộc: {restrictions}. "
@@ -143,7 +171,7 @@ def generate_food_candidates(state: AgentState):
     
     if not final_pool:
         logger.critical("❌ KHÔNG TÌM THẤY MÓN NÀO! Vui lòng kiểm tra lại DB connection hoặc Query.")
-    return {"candidate_pool": final_pool, "meals_to_generate": meals}
+    return {"candidate_pool": final_pool, "meals_to_generate": meals, "reason": dynamic_reason}
 
 def generate_numerical_constraints(user_profile, meal_type):
     """
@@ -178,14 +206,14 @@ def generate_numerical_constraints(user_profile, meal_type):
         meal_target = daily_val * meal_ratio
 
         if logic == 'max':
-            # Nới lỏng một chút ở bước tìm kiếm (120-130% target) để không bị lọc hết
-            threshold = round(meal_target * 1.3, 2)
+            # Nới lỏng một chút ở bước tìm kiếm (120-150% target) để không bị lọc hết
+            threshold = round(meal_target * 1.5, 2)
             constraints.append(f"{db_key} < {threshold}{unit}")
 
         elif logic == 'range':
-            # Range rộng (50% - 150%) để bắt được nhiều món
-            min_val = round(meal_target * 0.5, 2)
-            max_val = round(meal_target * 1.5, 2)
+            # Range rộng (40% - 160%) để bắt được nhiều món
+            min_val = round(meal_target * 0.4, 2)
+            max_val = round(meal_target * 1.6, 2)
             constraints.append(f"{db_key} > {min_val}{unit} - {db_key} < {max_val}{unit}")
 
     if not constraints: return ""
@@ -241,7 +269,7 @@ def rank_candidates(candidates, user_profile, meal_type):
     for doc in candidates:
         item = doc.metadata
         score = 0
-        reasons = [] # Lưu lý do để debug hoặc giải thích cho user
+        reasons = []
 
         # --- 1. CHẤM ĐIỂM NHÓM "BỔ SUNG" (BOOST) ---
         # Logic: Càng nhiều càng tốt

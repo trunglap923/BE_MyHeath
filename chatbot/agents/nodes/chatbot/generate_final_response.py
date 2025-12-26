@@ -72,7 +72,7 @@ MỤC TIÊU CỦA NGƯỜI DÙNG:
 - Mục tiêu: {target_kcal} Kcal | {target_p}g P | {target_f}g F | {target_c}g C
 
 YÊU CẦU TRÌNH BÀY:
-1. Trình bày danh sách món ăn theo từng bữa (Sử dụng Markdown đẹp).
+1. Trình bày danh sách món ăn theo từng bữa.
 2. Nhận xét chi tiết về 3 nhóm chất (Macros):
     - Protein: Đủ để xây dựng cơ bắp chưa?
     - Lipid (Chất béo): Có nằm trong ngưỡng lành mạnh không?
