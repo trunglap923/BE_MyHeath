@@ -1,5 +1,6 @@
 import random
 import logging
+import asyncio
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from chatbot.agents.states.state import AgentState
 from chatbot.agents.tools.food_retriever import food_retriever_50, docsearch
@@ -12,7 +13,7 @@ STAPLE_IDS = ["112", "1852", "2236", "2386", "2388"]
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def _process_single_meal(meal_type, profile, prompt_templates):
+async def _process_single_meal(meal_type, profile, prompt_templates):
     candidates = []
     try:
         # 1. Chuẩn bị Query
@@ -31,7 +32,7 @@ def _process_single_meal(meal_type, profile, prompt_templates):
 
         # 2. Gọi Retriever
         time_start = time.time()
-        docs = food_retriever_50.invoke(final_query)
+        docs = await food_retriever_50.ainvoke(final_query)
         time_end = time.time()
         
         logger.info(f"⏱️ Bữa {meal_type} xong trong {round(time_end - time_start, 2)}s")
@@ -62,7 +63,7 @@ def _process_single_meal(meal_type, profile, prompt_templates):
     
     return candidates
 
-def generate_food_candidates(state: AgentState):
+async def generate_food_candidates(state: AgentState):
     logger.info("---NODE: RETRIEVAL CANDIDATES (ADVANCED PROFILE)---")
     meals = state.get("meals_to_generate", [])
     profile = state["user_profile"]
@@ -144,21 +145,15 @@ def generate_food_candidates(state: AgentState):
         "tối":  f"Món ăn tối, nhẹ bụng. {constraint_prompt}",
     }
 
-    num_workers = min(len(meals), 3) if meals else 1
-    
-    with ThreadPoolExecutor(max_workers=num_workers) as executor:
-        future_to_meal = {
-            executor.submit(_process_single_meal, meal, profile, prompt_templates): meal 
-            for meal in meals
-        }
-
-        for future in as_completed(future_to_meal):
-            meal = future_to_meal[future]
-            try:
-                result_candidates = future.result()
-                candidates.extend(result_candidates)
-            except Exception as exc:
-                logger.error(f"❌ Thread bữa {meal} bị crash: {exc}")
+    tasks = [
+        _process_single_meal(meal, profile, prompt_templates) 
+        for meal in meals
+    ]
+    if tasks:
+        results = await asyncio.gather(*tasks)
+        
+        for res in results:
+            candidates.extend(res)
 
     unique_candidates = {}
     for item in candidates:
@@ -271,7 +266,7 @@ def rank_candidates(candidates, user_profile, meal_type):
         score = 0
         reasons = []
 
-        # --- 1. CHẤM ĐIỂM NHÓM "BỔ SUNG" (BOOST) ---
+        # --- 1. CHẤM ĐIỂM NHÓM "BỔ SUNG" ---
         # Logic: Càng nhiều càng tốt
         for nutrient in user_profile.get('Bổ sung', []):
             config = nutrient_config.get(nutrient)
@@ -295,7 +290,7 @@ def rank_candidates(candidates, user_profile, meal_type):
             if val >= meal_target * 0.8:
                 score += 5
 
-        # --- 2. CHẤM ĐIỂM NHÓM "HẠN CHẾ" & "KIÊNG" (PENALTY/REWARD) ---
+        # --- 2. CHẤM ĐIỂM NHÓM "HẠN CHẾ" & "KIÊNG" ---
         # Gộp chung: Càng thấp càng tốt
         check_list = set(user_profile.get('Hạn chế', []) + user_profile.get('Kiêng', []))
 
@@ -314,7 +309,7 @@ def rank_candidates(candidates, user_profile, meal_type):
                 # Nếu thấp hơn target -> +10 điểm (Tốt)
                 if val <= meal_target:
                     score += 10
-                # Nếu thấp hơn hẳn (chỉ bằng 50% target) -> +15 điểm (Rất an toàn)
+                # Nếu thấp hơn hẳn (chỉ bằng 50% target) -> +15 điểm
                 if val <= meal_target * 0.5:
                     score += 5
                 # Nếu vượt quá target -> -10 điểm (Phạt)
@@ -332,7 +327,7 @@ def rank_candidates(candidates, user_profile, meal_type):
                     score -= 10 # Cao quá (nguy hiểm cho thận)
                 # Thấp quá thì không trừ điểm nặng, chỉ không được cộng
 
-        # --- 3. ĐIỂM THƯỞNG CHO SỰ PHÙ HỢP CƠ BẢN (BASE HEALTH) ---
+        # --- 3. ĐIỂM THƯỞNG CHO SỰ PHÙ HỢP CƠ BẢN ---
         if float(item.get('sugar', 0)) < 5: score += 2
         if float(item.get('saturated_fat', 0)) < 3: score += 2
         if float(item.get('fiber', 0)) > 3: score += 3

@@ -6,7 +6,7 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def suggest_meal_node(state: AgentState):
+async def suggest_meal_node(state: AgentState):
     logger.info("---SUGGEST MEAL NODE---")
 
     user_id = state.get("user_id", 1)
@@ -29,14 +29,15 @@ def suggest_meal_node(state: AgentState):
     logger.info(f"👉 Gọi Tool: daily_meal_suggestion")
 
     try:
-        result = daily_meal_suggestion.invoke(tool_input)
+        result = await daily_meal_suggestion.ainvoke(tool_input)
         return {
             "final_menu": result.get("final_menu"),
             "reason": result.get("reason"),
         }
     except Exception as e:
-        print(f"❌ Lỗi khi chạy tool: {e}")
+        logger.error(f"❌ Lỗi khi chạy tool suggest_meal: {e}")
         return {
             "final_menu": [],
+            "reason": "Xin lỗi, hệ thống gặp sự cố khi tính toán thực đơn.",
             "error": str(e)
         }

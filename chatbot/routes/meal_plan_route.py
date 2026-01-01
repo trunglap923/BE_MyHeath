@@ -27,7 +27,7 @@ except Exception as e:
 
 # --- Route xử lý ---
 @router.post("/")
-def generate_meal_plan(request: Request):
+async def generate_meal_plan(request: Request):
     try:
         logger.info(f"Nhận yêu cầu lên thực đơn cho user: {request.user_id} - Bữa: {request.meals_to_generate}")
 
@@ -36,7 +36,7 @@ def generate_meal_plan(request: Request):
             "meals_to_generate": request.meals_to_generate,
         }
 
-        final_state = meal_app.invoke(initial_state)
+        final_state = await meal_app.ainvoke(initial_state)
         response = {
             "final_menu": final_state["final_menu"],
             "reason": final_state["reason"]
