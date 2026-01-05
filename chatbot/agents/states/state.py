@@ -27,6 +27,7 @@ class AgentState(TypedDict):
     food_old: Optional[Dict[str, Any]] = None
 
 class SwapState(TypedDict):
+    user_id: Optional[str] = None
     user_profile: Dict[str, Any]
     food_old: Dict[str, Any]
     candidates: List[Dict[str, Any]]
