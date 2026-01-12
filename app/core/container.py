@@ -9,11 +9,21 @@ from app.services.features.user_service import UserService
 from app.services.features.food_service import FoodService
 from app.services.features.tracking_service import TrackingService
 from app.services.features.notification_service import NotificationService
+from app.repositories.user_repository import UserRepository
+from app.repositories.food_repository import FoodRepository
+from app.repositories.notification_repository import NotificationRepository
+from app.repositories.tracking_repository import TrackingRepository
 
 class Container:
     _instance = None
 
     def __init__(self):
+        # Repositories
+        self.user_repository = UserRepository()
+        self.food_repository = FoodRepository()
+        self.tracking_repository = TrackingRepository()
+        self.notification_repository = NotificationRepository()
+
         self.llm_service = LLMService()
         self.retrieval_service = RetrievalService(self.llm_service)
         self.optimization_service = OptimizationService()
@@ -33,10 +43,10 @@ class Container:
         self.food_similarity_service = FoodSimilarityWorkflowService(self.llm_service, self.retrieval_service, self.meal_workflow_service)
         
         self.food_management_service = FoodManagementService(self.retrieval_service)
-        self.user_service = UserService()
-        self.food_service = FoodService()
-        self.tracking_service = TrackingService()
-        self.notification_service = NotificationService()
+        self.user_service = UserService(self.user_repository)
+        self.food_service = FoodService(self.food_repository)
+        self.tracking_service = TrackingService(self.tracking_repository)
+        self.notification_service = NotificationService(self.notification_repository)
 
     @classmethod
     def get_instance(cls):
