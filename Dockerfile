@@ -1,19 +1,19 @@
 FROM python:3.10-slim
 
-# Tắt cache HF để tránh lỗi nặng
-ENV HF_HOME=/cache/huggingface
-RUN mkdir -p /cache/huggingface
-
+# Set working directory
 WORKDIR /app
 
-COPY requirements.txt .
+# Install system dependencies if needed (e.g. for some python packages)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
 
+# Copy requirements and install
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Copy application code
 COPY . .
 
-# Expose cổng 7860 (HF Spaces yêu cầu)
-EXPOSE 7860
-
-# Chạy FastAPI
-CMD ["uvicorn", "start:app", "--host", "0.0.0.0", "--port", "7860"]
+# Default command (can be overridden by docker-compose)
+CMD ["uvicorn", "app.main_core:app", "--host", "0.0.0.0", "--port", "8000"]
