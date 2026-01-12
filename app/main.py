@@ -3,8 +3,12 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.controllers.meal_controller import router as meal_router
 from app.controllers.chatbot_controller import router as chatbot_router
-from app.controllers.food_similarity_controller import router as food_similarity_router
 from app.controllers.food_management_controller import router as food_management_router
+from app.controllers.user_controller import router as user_router
+from app.controllers.food_controller import router as food_router
+from app.controllers.tracking_controller import router as tracking_router
+from app.controllers.notification_controller import router as notification_router
+from app.controllers.food_similarity_controller import router as food_similarity_router
 from app.core.config import settings
 
 app = FastAPI(
@@ -25,6 +29,10 @@ app.include_router(meal_router)
 app.include_router(chatbot_router)
 app.include_router(food_similarity_router)
 app.include_router(food_management_router)
+app.include_router(user_router)
+app.include_router(food_router)
+app.include_router(tracking_router)
+app.include_router(notification_router)
 
 @app.get("/")
 def root():

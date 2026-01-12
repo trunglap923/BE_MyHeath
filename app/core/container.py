@@ -2,10 +2,13 @@ from app.services.core.llm_service import LLMService
 from app.services.core.retrieval_service import RetrievalService
 from app.services.core.optimization_service import OptimizationService
 from app.services.workflows.meal_suggestion_workflow import MealSuggestionWorkflowService
-from app.services.workflows.meal_suggestion_workflow import MealSuggestionWorkflowService
 from app.services.workflows.chatbot_workflow import ChatbotWorkflowService
 from app.services.workflows.food_similarity_workflow import FoodSimilarityWorkflowService
 from app.services.features.food_management_service import FoodManagementService
+from app.services.features.user_service import UserService
+from app.services.features.food_service import FoodService
+from app.services.features.tracking_service import TrackingService
+from app.services.features.notification_service import NotificationService
 
 class Container:
     _instance = None
@@ -30,6 +33,10 @@ class Container:
         self.food_similarity_service = FoodSimilarityWorkflowService(self.llm_service, self.retrieval_service, self.meal_workflow_service)
         
         self.food_management_service = FoodManagementService(self.retrieval_service)
+        self.user_service = UserService()
+        self.food_service = FoodService()
+        self.tracking_service = TrackingService()
+        self.notification_service = NotificationService()
 
     @classmethod
     def get_instance(cls):
